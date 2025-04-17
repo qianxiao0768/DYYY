@@ -1275,48 +1275,39 @@
         NSString *text = label.text;
         NSString *cityCode = self.model.cityCode;
         
-          if (cityCode.length > 0) {
-      // 添加区县获取
-      NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
-      NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
-      NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
-      
-      if (cityName.length > 0 && ![text containsString:cityName]) {
-          if (!self.model.ipAttribution) {
-              BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
-                                 ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                                  [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
-              
-              // 优先处理区县显示
-              if (districtName.length > 0) {
-                  label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@·%@", 
-                               text, provinceName, cityName, districtName];
-              } else if (isDirectCity) {
-                  label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, cityName];
-              } else {
-                  label.text = [NSString stringWithFormat:@"%@  IP属地：%@ %@", text, provinceName, cityName];
-              }
-          } else {
-              BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
-                                 ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                                  [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
-              
-              BOOL containsProvince = [text containsString:provinceName];
-              BOOL containsDistrict = [text containsString:districtName];
-              
-              // 区县存在时的处理
-              if (districtName.length > 0 && !containsDistrict) {
-                  label.text = [NSString stringWithFormat:@"%@ %@·%@", text, cityName, districtName];
-              } else if (isDirectCity && containsProvince) {
-                  label.text = text;
-              } else if (containsProvince) {
-                  label.text = [NSString stringWithFormat:@"%@ %@", text, cityName];
-              } else {
-                  label.text = text;
-              }
-          }
-      }
-  }
+        if (cityCode.length > 0) {
+            NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
+            NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
+            NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
+            
+            if (cityName.length > 0 && ![text containsString:cityName]) {
+                if (!self.model.ipAttribution) {
+                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
+                    
+                    if (districtName.length > 0) {
+                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@·%@", text, provinceName, cityName, districtName];
+                    } else if (isDirectCity) {
+                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, cityName];
+                    } else {
+                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@ %@", text, provinceName, cityName];
+                    }
+                } else {
+                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
+                    BOOL containsDistrict = [text containsString:districtName];
+                    
+                    if (districtName.length > 0 && !containsDistrict) {
+                        label.text = [NSString stringWithFormat:@"%@ %@·%@", text, cityName, districtName];
+                    } else if (isDirectCity && [text containsString:provinceName]) {
+                        label.text = text;
+                    } else if ([text containsString:provinceName]) {
+                        label.text = [NSString stringWithFormat:@"%@ %@", text, cityName];
+                    } else {
+                        label.text = text;
+                    }
+                }
+            }
+        }
+    }
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
