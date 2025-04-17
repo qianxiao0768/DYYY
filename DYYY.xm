@@ -1276,7 +1276,6 @@
         NSString *cityCode = self.model.cityCode;
         
         if (cityCode.length > 0) {
-            // 获取省市区名称（关键数据获取逻辑）
             NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
@@ -1322,7 +1321,6 @@
             }
         }
     }
-    // 颜色设置保持不变
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
@@ -1335,6 +1333,7 @@
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
 %end
+
 %hook AWEFeedRootViewController
 
 - (BOOL)prefersStatusBarHidden {
