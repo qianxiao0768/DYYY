@@ -1281,17 +1281,17 @@
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
             
-            // 构建地址层级
+            // 构建地址层级数组
             NSMutableArray<NSString *> *locationComponents = [NSMutableArray array];
             
             // 处理直辖市特殊逻辑
             if ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
                 [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]) {
                 
+                // 直辖市市级名称可能为空时使用省级名称
                 if (provinceName.length > 0) {
                     [locationComponents addObject:provinceName];
                 }
-                // 直辖市市级名称可能为空时使用省级名称
                 if (cityName.length == 0) {
                     cityName = provinceName;
                 }
@@ -1320,8 +1320,10 @@
                     if (i == 0) {
                         [locationInfo appendString:component];
                     } else {
-                        [locationInfo appendString:[NSString stringWithFormat:@" %@ %@", 
-                                                  (i == 1) ? @"市" : @"区", 
+                        // 添加行政区划后缀
+                        NSString *suffix = (i == 1) ? @"市" : @"区";
+                        [locationInfo appendString:[NSString stringWithFormat:@" %@%@", 
+                                                  (i == 1 && [component hasSuffix:@"市"]) ? @"" : suffix,
                                                   component]];
                     }
                 }
