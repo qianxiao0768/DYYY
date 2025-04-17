@@ -1276,70 +1276,65 @@
         NSString *cityCode = self.model.cityCode;
         
         if (cityCode.length > 0) {
+            // 获取省市区名称（关键数据获取逻辑）
             NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
             
-            if (cityName.length > 0 && ![text containsString:cityName]) {
-                if (!self.model.ipAttribution) {
-                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
-                                       ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                                        [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
-                    
-                    // 新增直辖市判断逻辑
+            // 构建完整归属地字符串
+            NSMutableString *fullLocation = [NSMutableString stringWithString:@""];
+            
+            // 处理省级信息
+            if (provinceName.length > 0) {
+                [fullLocation appendString:provinceName];
+                if (![provinceName isEqualToString:cityName]) { // 非直辖市
+                    [fullLocation appendString:@"·"];
+                    [fullLocation appendString:cityName];
+                }
+            }
+            
+            // 处理区县级信息
+            if (districtName.length > 0) {
+                if (fullLocation.length > 0) {
+                    [fullLocation appendString:@"·"];
+                }
+                [fullLocation appendString:districtName];
+            }
+            
+            // 合并原有文本和归属地信息
+            if (self.model.ipAttribution) {
+                // 保留原有IP归属地格式，追加区县信息
+                NSRange provinceRange = [text rangeOfString:provinceName];
+                NSRange cityRange = [text rangeOfString:cityName];
+                
+                if (provinceRange.location != NSNotFound && cityRange.location != NSNotFound) {
+                    // 在省和市之间插入区县
                     if (districtName.length > 0) {
-                        if (isDirectCity) {
-                            // 直辖市显示格式：市·区县（如：北京·朝阳区）
-                            label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@", text, cityName, districtName];
-                        } else {
-                            // 非直辖市显示格式：省·市·区县（如：浙江·杭州·余杭区）
-                            label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@·%@", text, provinceName, cityName, districtName];
-                        }
-                    } else if (isDirectCity) {
-                        // 没有区县信息的直辖市
-                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, cityName];
-                    } else {
-                        // 没有区县信息的普通地区
-                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@ %@", text, provinceName, cityName];
+                        NSString *insertString = [NSString stringWithFormat:@"%@·%@", cityName, districtName];
+                        label.text = [text stringByReplacingCharactersInRange:NSMakeRange(cityRange.location + cityName.length, 0) withString:insertString];
                     }
                 } else {
-                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
-                                       ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                                        [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
-                    BOOL containsDistrict = [text containsString:districtName];
-                    
-                    // 处理已存在IP属地的情况
-                    if (districtName.length > 0 && !containsDistrict) {
-                        if (isDirectCity) {
-                            label.text = [NSString stringWithFormat:@"%@ %@·%@", text, cityName, districtName];
-                        } else {
-                            label.text = [NSString stringWithFormat:@"%@ %@·%@·%@", text, provinceName, cityName, districtName];
-                        }
-                    } else if (isDirectCity && [text containsString:provinceName]) {
-                        label.text = text;
-                    } else if ([text containsString:provinceName]) {
-                        label.text = [NSString stringWithFormat:@"%@ %@", text, cityName];
-                    } else {
-                        label.text = text;
-                    }
+                    label.text = [NSString stringWithFormat:@"%@  %@", text, fullLocation];
                 }
+            } else {
+                // 新归属地显示格式
+                label.text = [NSString stringWithFormat:@"%@  %@", text, fullLocation];
             }
         }
     }
+    // 颜色设置保持不变
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
     }
-
+    
     return label;
 }
 
 +(BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2{
-	return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
-
 %end
-
 %hook AWEFeedRootViewController
 
 - (BOOL)prefersStatusBarHidden {
