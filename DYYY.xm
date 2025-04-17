@@ -1275,16 +1275,16 @@
         NSString *text = label.text;
         NSString *areaCode = self.model.cityCode; // 实际应为区县级代码
         
-        // 层级解析逻辑 (关键修改点)
-        NSString *provinceCode = [areaCode substringToIndex:2].stringByAppendingString:@"0000");
-        NSString *cityCode = [areaCode substringToIndex:4].stringByAppendingString:@"00");
+        // 层级解析逻辑 (修正语法错误)
+        NSString *provinceCode = [[areaCode substringToIndex:2] stringByAppendingString:@"0000"];
+        NSString *cityCode = [[areaCode substringToIndex:4] stringByAppendingString:@"00"];
         
         // 获取三级名称
         NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:provinceCode] ?: @"";
         NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
         NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:areaCode] ?: @"";
         
-        // 构建显示逻辑 (根据数据特点优化)
+        // 构建显示逻辑
         NSMutableArray *components = [NSMutableArray array];
         BOOL isDirectCity = [provinceCode hasPrefix:@"11"] || [provinceCode hasPrefix:@"12"] || 
                            [provinceCode hasPrefix:@"31"] || [provinceCode hasPrefix:@"50"];
@@ -1305,13 +1305,13 @@
         // 拼接显示逻辑
         if (components.count > 0) {
             NSString *location = [components componentsJoinedByString:@" "];
-            NSString *pattern = @"(.*?)(\\s+IP属地：.*)?"; // 保留时间部分
-            NSString *baseText = [text stringByReplacingOccurrencesOfString:pattern withString:@"$1" options:NSRegularExpressionSearch];
+            NSString *pattern = @"(.*?)(\\s+IP属地：.*)?";
+            NSString *baseText = [text stringByReplacingOccurrencesOfString:pattern withString:@"$1" options:NSRegularExpressionSearch range:NSMakeRange(0, text.length)];
             label.text = [NSString stringWithFormat:@"%@ IP属地：%@", baseText, location];
         }
     }
     
-    // 颜色配置保持不变
+    // 颜色配置
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
