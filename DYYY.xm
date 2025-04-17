@@ -1276,71 +1276,50 @@
         NSString *cityCode = self.model.cityCode;
         
         if (cityCode.length > 0) {
-            // 获取完整行政区划信息
+            // 获取三级行政区信息
             NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
             
-            // 构建地址层级数组
-            NSMutableArray<NSString *> *locationComponents = [NSMutableArray array];
+            // 构建显示组件
+            NSMutableArray *components = [NSMutableArray array];
+            BOOL isDirectCity = [cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
+                               [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"];
             
-            // 处理直辖市特殊逻辑
-            if ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]) {
-                
-                // 直辖市市级名称可能为空时使用省级名称
-                if (provinceName.length > 0) {
-                    [locationComponents addObject:provinceName];
+            // 处理直辖市显示逻辑
+            if (isDirectCity) {
+                [components addObject:provinceName];  // 省级名称（如北京市）
+                if (districtName.length > 0 && ![provinceName isEqualToString:districtName]) {
+                    [components addObject:districtName];  // 直接显示区县（东城区）
                 }
-                if (cityName.length == 0) {
-                    cityName = provinceName;
-                }
-                if (cityName.length > 0) {
-                    [locationComponents addObject:cityName];
-                }
-                
-            } else {
-                // 非直辖市标准层级
-                if (provinceName.length > 0) {
-                    [locationComponents addObject:provinceName];
-                }
-                if (cityName.length > 0) {
-                    [locationComponents addObject:cityName];
-                }
-                if (districtName.length > 0) {
-                    [locationComponents addObject:districtName];
-                }
+            } 
+            // 处理普通城市
+            else {
+                if (provinceName.length > 0) [components addObject:provinceName];
+                if (cityName.length > 0) [components addObject:cityName];
+                if (districtName.length > 0) [components addObject:districtName];
             }
             
             // 拼接IP属地信息
-            if (locationComponents.count > 0) {
-                NSMutableString *locationInfo = [NSMutableString string];
-                for (NSUInteger i = 0; i < locationComponents.count; i++) {
-                    NSString *component = locationComponents[i];
-                    if (i == 0) {
-                        [locationInfo appendString:component];
-                    } else {
-                        // 添加行政区划后缀
-                        NSString *suffix = (i == 1) ? @"市" : @"区";
-                        [locationInfo appendString:[NSString stringWithFormat:@" %@%@", 
-                                                  (i == 1 && [component hasSuffix:@"市"]) ? @"" : suffix,
-                                                  component]];
-                    }
+            if (components.count > 0) {
+                NSString *location = [components componentsJoinedByString:@" "];
+                
+                if ([text containsString:@"IP属地"]) {
+                    // 更新现有属地信息（保留时间部分）
+                    NSArray *timeParts = [text componentsSeparatedByString:@"  IP属地："];
+                    NSString *newText = [NSString stringWithFormat:@"%@  IP属地：%@", 
+                                       [timeParts firstObject], 
+                                       location];
+                    label.text = newText;
+                } else {
+                    // 首次添加属地信息
+                    label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, location];
                 }
-                
-                // 处理原有IP属地标记
-                NSString *ipMarker = [text containsString:@"IP属地"] ? @"" : @"IP属地：";
-                NSString *newText = [NSString stringWithFormat:@"%@%@%@", 
-                                   [text stringByReplacingOccurrencesOfString:@"IP属地：" withString:@""],
-                                   ipMarker,
-                                   locationInfo];
-                
-                label.text = newText;
             }
         }
     }
     
-    // 颜色配置保持不变
+    // 颜色配置（保持原逻辑）
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
@@ -1352,7 +1331,6 @@
 +(BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2{
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
-
 %end
 
 %hook AWEFeedRootViewController
