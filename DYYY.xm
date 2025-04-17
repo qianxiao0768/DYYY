@@ -1276,51 +1276,52 @@
         NSString *cityCode = self.model.cityCode;
         
         if (cityCode.length > 0) {
+            // 获取省市区县三级名称
             NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
             
-            // 构建完整归属地字符串
-            NSMutableString *fullLocation = [NSMutableString stringWithString:@""];
+            // 构建完整地理位置信息
+            NSMutableString *locationInfo = [NSMutableString string];
             
-            // 处理省级信息
-            if (provinceName.length > 0) {
-                [fullLocation appendString:provinceName];
-                if (![provinceName isEqualToString:cityName]) { // 非直辖市
-                    [fullLocation appendString:@"·"];
-                    [fullLocation appendString:cityName];
-                }
-            }
-            
-            // 处理区县级信息
-            if (districtName.length > 0) {
-                if (fullLocation.length > 0) {
-                    [fullLocation appendString:@"·"];
-                }
-                [fullLocation appendString:districtName];
-            }
-            
-            // 合并原有文本和归属地信息
-            if (self.model.ipAttribution) {
-                // 保留原有IP归属地格式，追加区县信息
-                NSRange provinceRange = [text rangeOfString:provinceName];
-                NSRange cityRange = [text rangeOfString:cityName];
+            // 处理直辖市特殊逻辑
+            if ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
+                [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]) {
                 
-                if (provinceRange.location != NSNotFound && cityRange.location != NSNotFound) {
-                    // 在省和市之间插入区县
-                    if (districtName.length > 0) {
-                        NSString *insertString = [NSString stringWithFormat:@"%@·%@", cityName, districtName];
-                        label.text = [text stringByReplacingCharactersInRange:NSMakeRange(cityRange.location + cityName.length, 0) withString:insertString];
-                    }
-                } else {
-                    label.text = [NSString stringWithFormat:@"%@  %@", text, fullLocation];
+                if (provinceName.length > 0) {
+                    [locationInfo appendString:provinceName];
                 }
+                if (cityName.length > 0 && ![text containsString:cityName]) {
+                    [locationInfo appendString:cityName];
+                }
+                
             } else {
-                // 新归属地显示格式
-                label.text = [NSString stringWithFormat:@"%@  %@", text, fullLocation];
+                // 非直辖市处理逻辑
+                if (provinceName.length > 0) {
+                    [locationInfo appendString:provinceName];
+                }
+                if (cityName.length > 0 && ![text containsString:cityName]) {
+                    [locationInfo appendString:cityName];
+                }
+                // 新增区县显示逻辑
+                if (districtName.length > 0 && ![text containsString:districtName]) {
+                    [locationInfo appendString:districtName];
+                }
+            }
+            
+            // 拼接IP属地信息
+            if (![text containsString:@"IP属地"] && locationInfo.length > 0) {
+                if (self.model.ipAttribution) {
+                    // 已有IP归属地时追加区县信息
+                    label.text = [NSString stringWithFormat:@"%@ %@", text, locationInfo];
+                } else {
+                    // 首次添加IP属地信息
+                    label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, locationInfo];
+                }
             }
         }
     }
+    // 颜色配置保持不变
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
@@ -1332,6 +1333,7 @@
 +(BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2{
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
+
 %end
 
 %hook AWEFeedRootViewController
