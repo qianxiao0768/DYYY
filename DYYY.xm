@@ -1276,51 +1276,68 @@
         NSString *cityCode = self.model.cityCode;
         
         if (cityCode.length > 0) {
-            // 获取省市区县三级名称
+            // 获取完整行政区划信息
             NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
             NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
             NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
             
-            // 构建完整地理位置信息
-            NSMutableString *locationInfo = [NSMutableString string];
+            // 构建地址层级
+            NSMutableArray<NSString *> *locationComponents = [NSMutableArray array];
             
             // 处理直辖市特殊逻辑
             if ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
                 [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]) {
                 
                 if (provinceName.length > 0) {
-                    [locationInfo appendString:provinceName];
+                    [locationComponents addObject:provinceName];
                 }
-                if (cityName.length > 0 && ![text containsString:cityName]) {
-                    [locationInfo appendString:cityName];
+                // 直辖市市级名称可能为空时使用省级名称
+                if (cityName.length == 0) {
+                    cityName = provinceName;
+                }
+                if (cityName.length > 0) {
+                    [locationComponents addObject:cityName];
                 }
                 
             } else {
-                // 非直辖市处理逻辑
+                // 非直辖市标准层级
                 if (provinceName.length > 0) {
-                    [locationInfo appendString:provinceName];
+                    [locationComponents addObject:provinceName];
                 }
-                if (cityName.length > 0 && ![text containsString:cityName]) {
-                    [locationInfo appendString:cityName];
+                if (cityName.length > 0) {
+                    [locationComponents addObject:cityName];
                 }
-                // 新增区县显示逻辑
-                if (districtName.length > 0 && ![text containsString:districtName]) {
-                    [locationInfo appendString:districtName];
+                if (districtName.length > 0) {
+                    [locationComponents addObject:districtName];
                 }
             }
             
             // 拼接IP属地信息
-            if (![text containsString:@"IP属地"] && locationInfo.length > 0) {
-                if (self.model.ipAttribution) {
-                    // 已有IP归属地时追加区县信息
-                    label.text = [NSString stringWithFormat:@"%@ %@", text, locationInfo];
-                } else {
-                    // 首次添加IP属地信息
-                    label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, locationInfo];
+            if (locationComponents.count > 0) {
+                NSMutableString *locationInfo = [NSMutableString string];
+                for (NSUInteger i = 0; i < locationComponents.count; i++) {
+                    NSString *component = locationComponents[i];
+                    if (i == 0) {
+                        [locationInfo appendString:component];
+                    } else {
+                        [locationInfo appendString:[NSString stringWithFormat:@" %@ %@", 
+                                                  (i == 1) ? @"市" : @"区", 
+                                                  component]];
+                    }
                 }
+                
+                // 处理原有IP属地标记
+                NSString *ipMarker = [text containsString:@"IP属地"] ? @"" : @"IP属地：";
+                NSString *newText = [NSString stringWithFormat:@"%@%@%@", 
+                                   [text stringByReplacingOccurrencesOfString:@"IP属地：" withString:@""],
+                                   ipMarker,
+                                   locationInfo];
+                
+                label.text = newText;
             }
         }
     }
+    
     // 颜色配置保持不变
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
