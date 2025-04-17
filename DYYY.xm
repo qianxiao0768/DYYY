@@ -1282,21 +1282,39 @@
             
             if (cityName.length > 0 && ![text containsString:cityName]) {
                 if (!self.model.ipAttribution) {
-                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
+                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
+                                       ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
+                                        [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
                     
+                    // 新增直辖市判断逻辑
                     if (districtName.length > 0) {
-                        label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@·%@", text, provinceName, cityName, districtName];
+                        if (isDirectCity) {
+                            // 直辖市显示格式：市·区县（如：北京·朝阳区）
+                            label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@", text, cityName, districtName];
+                        } else {
+                            // 非直辖市显示格式：省·市·区县（如：浙江·杭州·余杭区）
+                            label.text = [NSString stringWithFormat:@"%@  IP属地：%@·%@·%@", text, provinceName, cityName, districtName];
+                        }
                     } else if (isDirectCity) {
+                        // 没有区县信息的直辖市
                         label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, cityName];
                     } else {
+                        // 没有区县信息的普通地区
                         label.text = [NSString stringWithFormat:@"%@  IP属地：%@ %@", text, provinceName, cityName];
                     }
                 } else {
-                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
+                    BOOL isDirectCity = [provinceName isEqualToString:cityName] || 
+                                       ([cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
+                                        [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"]);
                     BOOL containsDistrict = [text containsString:districtName];
                     
+                    // 处理已存在IP属地的情况
                     if (districtName.length > 0 && !containsDistrict) {
-                        label.text = [NSString stringWithFormat:@"%@ %@·%@", text, cityName, districtName];
+                        if (isDirectCity) {
+                            label.text = [NSString stringWithFormat:@"%@ %@·%@", text, cityName, districtName];
+                        } else {
+                            label.text = [NSString stringWithFormat:@"%@ %@·%@·%@", text, provinceName, cityName, districtName];
+                        }
                     } else if (isDirectCity && [text containsString:provinceName]) {
                         label.text = text;
                     } else if ([text containsString:provinceName]) {
