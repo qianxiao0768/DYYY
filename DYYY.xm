@@ -1269,39 +1269,45 @@
 %end
 
 %hook AWEPlayInteractionTimestampElement
+
 - (id)timestampLabel {
     UILabel *label = %orig;
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"]) {
         NSString *text = label.text;
-        NSString *areaCode = self.model.cityCode; // 实际应为区县级代码
+        NSString *areaCode = self.model.cityCode; // 确保这是区县级代码
         
-        // 使用 CityManager 的方法获取三级行政区名称
+        // 获取三级行政区名称
         NSString *provinceName = [[CityManager sharedInstance] getProvinceNameWithCode:areaCode] ?: @"";
         NSString *cityName = [[CityManager sharedInstance] getCityNameWithCode:areaCode] ?: @"";
         NSString *districtName = [[CityManager sharedInstance] getDistrictNameWithCode:areaCode] ?: @"";
         
         // 构建显示逻辑
         NSMutableArray *components = [NSMutableArray array];
-        BOOL isDirectCity = [provinceName isEqualToString:cityName]; // 直辖市处理
-
-        if (isDirectCity) {
-            // 直辖市只显示省和区县
-            [components addObject:provinceName];
-            if (districtName.length > 0 && ![districtName containsString:@"市辖区"]) {
+        
+        // 强制添加省和市（确保至少显示省市）
+        if (provinceName.length > 0) [components addObject:provinceName];
+        if (cityName.length > 0 && ![cityName isEqualToString:provinceName]) [components addObject:cityName]; // 避免直辖市重复
+        
+        // 特殊处理区县显示
+        BOOL isMunicipality = [self isDirectMunicipality:provinceName];
+        if (districtName.length > 0) {
+            // 直辖市过滤无效区县
+            if (isMunicipality && ![districtName containsString:@"市辖区"]) {
                 [components addObject:districtName];
             }
-        } else {
-            // 普通省市区三级结构
-            if (provinceName.length > 0) [components addObject:provinceName];
-            if (cityName.length > 0) [components addObject:cityName];
-            if (districtName.length > 0) [components addObject:districtName];
+            // 普通城市直接添加区县
+            else if (!isMunicipality) {
+                [components addObject:districtName];
+            }
         }
         
-        // 拼接显示逻辑
+        // 拼接显示内容
         if (components.count > 0) {
             NSString *location = [components componentsJoinedByString:@" "];
-            NSString *pattern = @"(.*?)(\\s+IP属地：.*)?";
-            NSString *baseText = [text stringByReplacingOccurrencesOfString:pattern withString:@"$1" options:NSRegularExpressionSearch range:NSMakeRange(0, text.length)];
+            NSString *baseText = [text stringByReplacingOccurrencesOfString:@"(.*?)(\\s+IP属地：.*)?" 
+                                                                 withString:@"$1" 
+                                                                    options:NSRegularExpressionSearch 
+                                                                      range:NSMakeRange(0, text.length)];
             label.text = [NSString stringWithFormat:@"%@ IP属地：%@", baseText, location];
         }
     }
@@ -1315,9 +1321,16 @@
     return label;
 }
 
-+(BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2{
+// 判断是否为直辖市
+- (BOOL)isDirectMunicipality:(NSString *)province {
+    NSArray *directCities = @[@"北京", @"上海", @"天津", @"重庆"];
+    return [directCities containsObject:province];
+}
+
++ (BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
+
 %end
 
 %hook AWEFeedRootViewController
