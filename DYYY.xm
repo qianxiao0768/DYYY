@@ -1275,28 +1275,23 @@
         NSString *text = label.text;
         NSString *areaCode = self.model.cityCode; // 实际应为区县级代码
         
-        // 层级解析逻辑 (修正语法错误)
-        NSString *provinceCode = [[areaCode substringToIndex:2] stringByAppendingString:@"0000"];
-        NSString *cityCode = [[areaCode substringToIndex:4] stringByAppendingString:@"00"];
-        
-        // 获取三级名称
-        NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:provinceCode] ?: @"";
-        NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
-        NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:areaCode] ?: @"";
+        // 使用 CityManager 的方法获取三级行政区名称
+        NSString *provinceName = [[CityManager sharedInstance] getProvinceNameWithCode:areaCode] ?: @"";
+        NSString *cityName = [[CityManager sharedInstance] getCityNameWithCode:areaCode] ?: @"";
+        NSString *districtName = [[CityManager sharedInstance] getDistrictNameWithCode:areaCode] ?: @"";
         
         // 构建显示逻辑
         NSMutableArray *components = [NSMutableArray array];
-        BOOL isDirectCity = [provinceCode hasPrefix:@"11"] || [provinceCode hasPrefix:@"12"] || 
-                           [provinceCode hasPrefix:@"31"] || [provinceCode hasPrefix:@"50"];
-        
+        BOOL isDirectCity = [provinceName isEqualToString:cityName]; // 直辖市处理
+
         if (isDirectCity) {
-            // 直辖市特殊处理
+            // 直辖市只显示省和区县
             [components addObject:provinceName];
             if (districtName.length > 0 && ![districtName containsString:@"市辖区"]) {
                 [components addObject:districtName];
             }
         } else {
-            // 标准三级结构
+            // 普通省市区三级结构
             if (provinceName.length > 0) [components addObject:provinceName];
             if (cityName.length > 0) [components addObject:cityName];
             if (districtName.length > 0) [components addObject:districtName];
