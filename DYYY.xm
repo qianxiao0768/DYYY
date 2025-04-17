@@ -1273,53 +1273,45 @@
     UILabel *label = %orig;
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"]) {
         NSString *text = label.text;
-        NSString *cityCode = self.model.cityCode;
+        NSString *areaCode = self.model.cityCode; // 实际应为区县级代码
         
-        if (cityCode.length > 0) {
-            // 获取三级行政区信息
-            NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:cityCode] ?: @"";
-            NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
-            NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:cityCode] ?: @"";
-            
-            // 构建显示组件
-            NSMutableArray *components = [NSMutableArray array];
-            BOOL isDirectCity = [cityCode hasPrefix:@"11"] || [cityCode hasPrefix:@"12"] || 
-                               [cityCode hasPrefix:@"31"] || [cityCode hasPrefix:@"50"];
-            
-            // 处理直辖市显示逻辑
-            if (isDirectCity) {
-                [components addObject:provinceName];  // 省级名称（如北京市）
-                if (districtName.length > 0 && ![provinceName isEqualToString:districtName]) {
-                    [components addObject:districtName];  // 直接显示区县（东城区）
-                }
-            } 
-            // 处理普通城市
-            else {
-                if (provinceName.length > 0) [components addObject:provinceName];
-                if (cityName.length > 0) [components addObject:cityName];
-                if (districtName.length > 0) [components addObject:districtName];
+        // 层级解析逻辑 (关键修改点)
+        NSString *provinceCode = [areaCode substringToIndex:2].stringByAppendingString:@"0000");
+        NSString *cityCode = [areaCode substringToIndex:4].stringByAppendingString:@"00");
+        
+        // 获取三级名称
+        NSString *provinceName = [CityManager.sharedInstance getProvinceNameWithCode:provinceCode] ?: @"";
+        NSString *cityName = [CityManager.sharedInstance getCityNameWithCode:cityCode] ?: @"";
+        NSString *districtName = [CityManager.sharedInstance getDistrictNameWithCode:areaCode] ?: @"";
+        
+        // 构建显示逻辑 (根据数据特点优化)
+        NSMutableArray *components = [NSMutableArray array];
+        BOOL isDirectCity = [provinceCode hasPrefix:@"11"] || [provinceCode hasPrefix:@"12"] || 
+                           [provinceCode hasPrefix:@"31"] || [provinceCode hasPrefix:@"50"];
+        
+        if (isDirectCity) {
+            // 直辖市特殊处理
+            [components addObject:provinceName];
+            if (districtName.length > 0 && ![districtName containsString:@"市辖区"]) {
+                [components addObject:districtName];
             }
-            
-            // 拼接IP属地信息
-            if (components.count > 0) {
-                NSString *location = [components componentsJoinedByString:@" "];
-                
-                if ([text containsString:@"IP属地"]) {
-                    // 更新现有属地信息（保留时间部分）
-                    NSArray *timeParts = [text componentsSeparatedByString:@"  IP属地："];
-                    NSString *newText = [NSString stringWithFormat:@"%@  IP属地：%@", 
-                                       [timeParts firstObject], 
-                                       location];
-                    label.text = newText;
-                } else {
-                    // 首次添加属地信息
-                    label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, location];
-                }
-            }
+        } else {
+            // 标准三级结构
+            if (provinceName.length > 0) [components addObject:provinceName];
+            if (cityName.length > 0) [components addObject:cityName];
+            if (districtName.length > 0) [components addObject:districtName];
+        }
+        
+        // 拼接显示逻辑
+        if (components.count > 0) {
+            NSString *location = [components componentsJoinedByString:@" "];
+            NSString *pattern = @"(.*?)(\\s+IP属地：.*)?"; // 保留时间部分
+            NSString *baseText = [text stringByReplacingOccurrencesOfString:pattern withString:@"$1" options:NSRegularExpressionSearch];
+            label.text = [NSString stringWithFormat:@"%@ IP属地：%@", baseText, location];
         }
     }
     
-    // 颜色配置（保持原逻辑）
+    // 颜色配置保持不变
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
