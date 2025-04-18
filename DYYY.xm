@@ -1280,55 +1280,48 @@
             NSString *provinceCode = [[districtCode substringToIndex:2] stringByAppendingString:@"0000"];
             NSString *cityCode = [[districtCode substringToIndex:4] stringByAppendingString:@"00"];
             
-            // 从城市管理器获取数据
+            // 通过KVC访问字典数据
             CityManager *manager = [CityManager sharedInstance];
+            NSDictionary *provincesDict = [manager valueForKey:@"provincesDict"];
+            NSDictionary *citiesDict = [manager valueForKey:@"citiesDict"];
+            NSDictionary *allDistrictsDict = [manager valueForKey:@"allDistrictsDict"];
             
-            // 获取省级名称
-            NSString *provinceName = [manager.provincesDict objectForKey:provinceCode] ?: @"";
-            
-            // 获取市级名称（需处理直辖市特殊情况）
-            NSString *cityName = [manager.citiesDict objectForKey:cityCode] ?: @"";
-            
-            // 获取区县级名称
-            NSString *districtName = [[manager.allDistrictsDict objectForKey:cityCode] objectForKey:districtCode] ?: @"";
+            // 获取三级名称
+            NSString *provinceName = [provincesDict objectForKey:provinceCode] ?: @"";
+            NSString *cityName = [citiesDict objectForKey:cityCode] ?: @"";
+            NSDictionary *districtDict = [allDistrictsDict objectForKey:cityCode];
+            NSString *districtName = [districtDict objectForKey:districtCode] ?: @"";
             
             // 构建显示组件
             NSMutableArray *components = [NSMutableArray array];
             BOOL isDirectCity = [@[@"11",@"12",@"31",@"50"] containsObject:[provinceCode substringToIndex:2]];
             
-            // 省级显示
-            if (provinceName.length > 0) {
-                [components addObject:provinceName];
-            }
-            
-            // 市级显示规则
-            if (!isDirectCity && cityName.length > 0) {
-                [components addObject:cityName];
-            }
-            
-            // 区县级显示规则
-            if (districtName.length > 0) {
-                if (isDirectCity) {
-                    // 过滤直辖市的"市辖区"显示
-                    if (![districtName containsString:@"市辖区"]) {
-                        [components addObject:districtName];
-                    }
-                } else {
-                    // 普通城市直接显示
-                    [components addObject:districtName];
-                }
-            }
-            
-            // 处理重庆特殊结构（500200郊县）
+            // 处理重庆郊县特殊结构
             if ([cityCode isEqualToString:@"500200"]) {
-                [components removeAllObjects];
                 [components addObject:@"重庆"];
                 if (districtName.length > 0) {
                     [components addObject:districtName];
                 }
+            } else {
+                // 常规显示逻辑
+                if (provinceName.length > 0) [components addObject:provinceName];
+                
+                if (!isDirectCity && cityName.length > 0) {
+                    [components addObject:cityName];
+                }
+                
+                if (districtName.length > 0) {
+                    if (isDirectCity) {
+                        if (![districtName containsString:@"市辖区"]) {
+                            [components addObject:districtName];
+                        }
+                    } else {
+                        [components addObject:districtName];
+                    }
+                }
             }
             
-            // 拼接显示内容
+            // 最终拼接
             if (components.count > 0) {
                 NSString *location = [components componentsJoinedByString:@" "];
                 label.text = [NSString stringWithFormat:@"%@  IP属地：%@", text, location];
@@ -1336,7 +1329,7 @@
         }
     }
     
-    // 颜色设置保持不变
+    // 颜色设置
     NSString *labelColor = [[NSUserDefaults standardUserDefaults] objectForKey:@"DYYYLabelColor"];
     if (labelColor.length > 0) {
         label.textColor = [DYYYManager colorWithHexString:labelColor];
@@ -1348,6 +1341,7 @@
 + (BOOL)shouldActiveWithData:(id)arg1 context:(id)arg2 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"DYYYisEnableArea"];
 }
+
 %end
 
 %hook AWEFeedRootViewController
