@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <CityManager.m>
 
 // 城市选择器代理协议
 @protocol CitySelectorDelegate <NSObject>
